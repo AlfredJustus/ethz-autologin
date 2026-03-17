@@ -6,11 +6,6 @@
 (() => {
   'use strict';
 
-  const GITHUB_URL = 'https://github.com/AlfredJustus/ethz-autologin';
-
-  // ── Config ──
-  const LOGOUT_BYPASS_MS = 10 * 60 * 1000; // 10 minutes
-
   // ── Security: only auto-fill on the actual ETHZ Identity Provider ──
   const TRUSTED_IDP_HOSTS = ['aai-logon.ethz.ch'];
 
@@ -82,7 +77,9 @@
   };
 
   // ── Logout detection ──
-  // Watch for clicks on logout links/buttons so we don't immediately re-login
+  // When a user clicks logout, we store which origin they logged out from.
+  // Auto-login is only skipped if the Shibboleth redirect came from that same origin.
+  // If the user manually navigates to aai-logon.ethz.ch, auto-login activates normally.
   const LOGOUT_PATTERN = /log\s*out|sign\s*out|abmelden|ausloggen|d[eé]connexion/i;
 
   const watchForLogout = () => {
@@ -96,15 +93,28 @@
       if (LOGOUT_PATTERN.test(text) || LOGOUT_PATTERN.test(href) ||
           href.includes('logout') || href.includes('Logout') ||
           href.includes('Shibboleth.sso/Logout')) {
-        // User is intentionally logging out — set bypass
-        chrome.storage.local.set({ ethz_logout_at: Date.now() });
+        // Store the origin the user logged out from
+        chrome.storage.local.set({
+          ethz_logout_origin: location.origin,
+          ethz_logout_at: Date.now()
+        });
       }
-    }, true); // capture phase so we catch it before navigation
+    }, true);
   };
 
-  const isLogoutBypassed = (logoutAt) => {
-    if (!logoutAt) return false;
-    return (Date.now() - logoutAt) < LOGOUT_BYPASS_MS;
+  // Check if this login page was reached via a redirect from a site the user just logged out of.
+  // We use document.referrer to see where we came from.
+  const isLogoutBypass = (logoutOrigin, logoutAt) => {
+    if (!logoutOrigin || !logoutAt) return false;
+    // Only bypass for 60 seconds — just enough to cover the redirect chain after logout
+    if (Date.now() - logoutAt > 60000) return false;
+    // Check if the referrer matches the origin the user logged out from
+    try {
+      const ref = document.referrer ? new URL(document.referrer).origin : '';
+      return ref === logoutOrigin || location.origin === logoutOrigin;
+    } catch {
+      return false;
+    }
   };
 
   // ── Detect login errors on the page ──
@@ -310,19 +320,19 @@
     watchForLogout();
 
     chrome.storage.local.get(
-      ['ethz_username', 'ethz_password', 'ethz_login_failed', 'ethz_logout_at'],
+      ['ethz_username', 'ethz_password', 'ethz_login_failed', 'ethz_logout_origin', 'ethz_logout_at'],
       (result) => {
         const username = result.ethz_username;
         const password = result.ethz_password;
         const hasCreds = !!(username && password);
         const previouslyFailed = !!result.ethz_login_failed;
-        const logoutBypassed = isLogoutBypassed(result.ethz_logout_at);
-
-        // ─── Respect manual logout (10 min cooldown) ───
-        if (logoutBypassed) return;
+        const logoutBypassed = isLogoutBypass(result.ethz_logout_origin, result.ethz_logout_at);
 
         // ─── IdP login page ───
         if (isIdpPage() && hasLoginForm()) {
+
+          // If we just got here from a logout redirect, don't auto-login
+          if (logoutBypassed) return;
 
           // Check if this is a RETURN to the login page after a failed attempt
           if (hasLoginError() && hasCreds) {
@@ -384,7 +394,7 @@
         }
 
         // ─── Shibboleth redirect / SAML POST-back ───
-        if (isShibbolethRedirect() && hasCreds && !previouslyFailed) {
+        if (isShibbolethRedirect() && hasCreds && !previouslyFailed && !logoutBypassed) {
           showOverlay();
 
           const autoSubmit =
@@ -396,9 +406,11 @@
           return;
         }
 
-        // ─── Normal ETHZ page — if we just landed here successfully, clear failure state ───
+        // ─── Normal ETHZ page — if we just landed here successfully, clear failure + logout state ───
         if (hasCreds && !isIdpPage() && !isShibbolethRedirect()) {
           chrome.runtime.sendMessage({ type: 'LOGIN_SUCCEEDED' });
+          // Clear logout bypass since we've landed on a normal page
+          chrome.storage.local.remove(['ethz_logout_origin', 'ethz_logout_at']);
         }
       }
     );
