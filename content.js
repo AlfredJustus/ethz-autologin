@@ -1,5 +1,5 @@
 // ETHZ Auto-Login content script
-// Detects Shibboleth/SWITCH AAI login forms and submits stored credentials.
+// Detects Shibboleth/SWITCH AAI login forms, shows a clean overlay, and submits stored credentials.
 
 const USERNAME_SELECTORS = [
   'input[name="j_username"]',
@@ -64,6 +64,51 @@ const findSubmitButton = () => {
   );
 };
 
+/**
+ * Shows a full-page overlay that covers the login form flash.
+ * Displayed while credentials are being filled and the form submits.
+ */
+const showOverlay = () => {
+  const overlay = document.createElement('div');
+  overlay.id = 'ethz-autologin-overlay';
+  overlay.innerHTML = `
+    <style>
+      #ethz-autologin-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+        color: #1F407A;
+      }
+      #ethz-autologin-overlay .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid #e0e0e0;
+        border-top-color: #1F407A;
+        border-radius: 50%;
+        animation: ethz-spin 0.8s linear infinite;
+        margin-bottom: 16px;
+      }
+      #ethz-autologin-overlay .label {
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+      }
+      @keyframes ethz-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <div class="spinner"></div>
+    <div class="label">Signing in to ETHZ…</div>
+  `;
+  document.documentElement.appendChild(overlay);
+};
+
 const attemptAutoLogin = () => {
   const fields = findLoginFields();
   if (!fields) return;
@@ -73,6 +118,9 @@ const attemptAutoLogin = () => {
     const password = result.ethz_password;
 
     if (!username || !password) return;
+
+    // Show overlay immediately to cover the raw form
+    showOverlay();
 
     fields.usernameInput.value = username;
     fields.passwordInput.value = password;
