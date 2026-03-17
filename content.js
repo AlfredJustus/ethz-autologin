@@ -77,28 +77,11 @@
   };
 
   // ── Logout detection ──
-  // Instead of a global timeout, we detect if the user arrived here via a logout redirect.
-  // This is checked by looking at the referrer or the current URL for logout indicators.
+  // Watches for clicks on logout links/buttons. On click, notifies the background
+  // script which stores a 30-second bypass window in chrome.storage.session.
+  // This survives the page navigation (unlike JS variables) but expires quickly
+  // (unlike the old 10-minute chrome.storage.local approach).
   const LOGOUT_PATTERN = /log\s*out|sign\s*out|abmelden|ausloggen|d[eé]connexion/i;
-
-  const arrivedViaLogout = () => {
-    // Check if the referrer contains logout-related paths
-    const ref = document.referrer || '';
-    if (/logout|Logout|signout|Shibboleth\.sso\/Logout/i.test(ref)) return true;
-
-    // Check if current URL has logout param (some services append this)
-    if (/logout|loggedout/i.test(location.search)) return true;
-
-    // Check if we're on the Shibboleth login page that's specifically a post-logout landing
-    // (Moodle redirects to /auth/shibboleth/login.php after logout)
-    if (location.pathname.includes('/auth/shibboleth/login.php') && /logout/i.test(ref)) return true;
-
-    return false;
-  };
-
-  // Watch for logout clicks — set a per-tab flag so we don't auto-login
-  // on the immediate redirect chain after clicking logout
-  let logoutClickedInTab = false;
 
   const watchForLogout = () => {
     document.addEventListener('click', (e) => {
@@ -111,9 +94,10 @@
       if (LOGOUT_PATTERN.test(text) || LOGOUT_PATTERN.test(href) ||
           href.includes('logout') || href.includes('Logout') ||
           href.includes('Shibboleth.sso/Logout')) {
-        logoutClickedInTab = true;
+        // Tell background to set the bypass timestamp
+        chrome.runtime.sendMessage({ type: 'LOGOUT_DETECTED' });
       }
-    }, true);
+    }, true); // capture phase — fires before navigation
   };
 
   // ── Detect login errors on the page ──
@@ -315,101 +299,100 @@
 
   // ── Main logic ──
   const run = () => {
-    // Watch for logout clicks on this page (per-tab, dies on navigation)
+    // Always watch for logout clicks on any ETHZ page
     watchForLogout();
 
-    chrome.storage.local.get(
-      ['ethz_username', 'ethz_password', 'ethz_login_failed'],
-      (result) => {
-        const username = result.ethz_username;
-        const password = result.ethz_password;
-        const hasCreds = !!(username && password);
-        const previouslyFailed = !!result.ethz_login_failed;
+    // First check if we're in a post-logout bypass window (async, via background)
+    chrome.runtime.sendMessage({ type: 'CHECK_LOGOUT_BYPASS' }, (response) => {
+      if (response?.bypassed) return; // User just logged out — don't auto-login
 
-        // ─── Respect manual logout ───
-        // Skip auto-login if:
-        // 1. User clicked logout on this tab (per-tab JS flag), OR
-        // 2. We arrived here via a logout redirect (referrer check)
-        if (logoutClickedInTab || arrivedViaLogout()) return;
+      chrome.storage.local.get(
+        ['ethz_username', 'ethz_password', 'ethz_login_failed'],
+        (result) => {
+          const username = result.ethz_username;
+          const password = result.ethz_password;
+          const hasCreds = !!(username && password);
+          const previouslyFailed = !!result.ethz_login_failed;
 
-        // ─── IdP login page ───
-        if (isIdpPage() && hasLoginForm()) {
+          // ─── IdP login page ───
+          if (isIdpPage() && hasLoginForm()) {
 
-          if (hasLoginError() && hasCreds) {
-            chrome.runtime.sendMessage({ type: 'LOGIN_FAILED' });
-            showToast({
-              title: 'Login failed',
-              body: 'Your saved ETHZ credentials appear to be incorrect. Update or remove them in the extension settings.',
-              type: 'error',
-              action: {
-                label: 'Update credentials',
-                danger: true,
-                onClick: openExtensionPopup
-              }
-            });
+            if (hasLoginError() && hasCreds) {
+              chrome.runtime.sendMessage({ type: 'LOGIN_FAILED' });
+              showToast({
+                title: 'Login failed',
+                body: 'Your saved ETHZ credentials appear to be incorrect. Update or remove them in the extension settings.',
+                type: 'error',
+                action: {
+                  label: 'Update credentials',
+                  danger: true,
+                  onClick: openExtensionPopup
+                }
+              });
+              return;
+            }
+
+            if (previouslyFailed) {
+              showToast({
+                title: 'Auto-login paused',
+                body: 'A previous login attempt failed. Update your credentials in the extension to try again.',
+                type: 'error',
+                action: {
+                  label: 'Update credentials',
+                  danger: true,
+                  onClick: openExtensionPopup
+                }
+              });
+              return;
+            }
+
+            if (!hasCreds) {
+              showToast({
+                title: 'ETHZ Auto-Login',
+                body: 'You haven\'t set up your login credentials yet. Click the extension icon to add them and skip this page next time.',
+                type: 'info'
+              });
+              return;
+            }
+
+            // Happy path: overlay + fill + submit
+            showOverlay();
+
+            const u = findFirstMatch(USERNAME_SELECTORS);
+            const p = findFirstMatch(PASSWORD_SELECTORS);
+
+            u.value = username;
+            p.value = password;
+            dispatchInputEvents(u);
+            dispatchInputEvents(p);
+
+            const btn = findSubmitButton();
+            if (btn) {
+              setTimeout(() => btn.click(), 300);
+            }
             return;
           }
 
-          if (previouslyFailed) {
-            showToast({
-              title: 'Auto-login paused',
-              body: 'A previous login attempt failed. Update your credentials in the extension to try again.',
-              type: 'error',
-              action: {
-                label: 'Update credentials',
-                danger: true,
-                onClick: openExtensionPopup
-              }
-            });
+          // ─── Shibboleth redirect / SAML POST-back ───
+          if (isShibbolethRedirect() && hasCreds && !previouslyFailed) {
+            showOverlay();
+
+            const autoSubmit =
+              document.querySelector('form input[type="submit"]') ||
+              document.querySelector('form button[type="submit"]');
+            if (autoSubmit) {
+              setTimeout(() => autoSubmit.click(), 100);
+            }
             return;
           }
 
-          if (!hasCreds) {
-            showToast({
-              title: 'ETHZ Auto-Login',
-              body: 'You haven\'t set up your login credentials yet. Click the extension icon to add them and skip this page next time.',
-              type: 'info'
-            });
-            return;
+          // ─── Normal ETHZ page — login succeeded ───
+          if (hasCreds && !isIdpPage() && !isShibbolethRedirect()) {
+            chrome.runtime.sendMessage({ type: 'LOGIN_SUCCEEDED' });
           }
-
-          // Happy path: overlay + fill + submit
-          showOverlay();
-
-          const u = findFirstMatch(USERNAME_SELECTORS);
-          const p = findFirstMatch(PASSWORD_SELECTORS);
-
-          u.value = username;
-          p.value = password;
-          dispatchInputEvents(u);
-          dispatchInputEvents(p);
-
-          const btn = findSubmitButton();
-          if (btn) {
-            setTimeout(() => btn.click(), 300);
-          }
-          return;
         }
-
-        // ─── Shibboleth redirect / SAML POST-back ───
-        if (isShibbolethRedirect() && hasCreds && !previouslyFailed) {
-          showOverlay();
-
-          const autoSubmit =
-            document.querySelector('form input[type="submit"]') ||
-            document.querySelector('form button[type="submit"]');
-          if (autoSubmit) {
-            setTimeout(() => autoSubmit.click(), 100);
-          }
-          return;
-        }
-
-        // ─── Normal ETHZ page — login succeeded ───
-        if (hasCreds && !isIdpPage() && !isShibbolethRedirect()) {
-          chrome.runtime.sendMessage({ type: 'LOGIN_SUCCEEDED' });
-        }
-      }
-    );
+      );
+    });
   };
 
   run();
