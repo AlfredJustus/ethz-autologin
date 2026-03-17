@@ -1,0 +1,136 @@
+:root {
+  --eth-blue: #1f407a;
+  --success: #2e7d32;
+  --danger: #c62828;
+  --text: #1b1b1b;
+  --muted: #6f6f6f;
+  --border: #e0e0e0;
+  --bg: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  width: 320px;
+}
+
+.container {
+  padding: 16px;
+}
+
+.header h1 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--eth-blue);
+}
+
+.status {
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  background: #f7f7f7;
+  color: var(--muted);
+}
+
+.status-ok {
+  background: #e8f5e9;
+  color: var(--success);
+}
+
+.field {
+  margin-bottom: 12px;
+}
+
+.field label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field input:focus {
+  border-color: var(--eth-blue);
+  box-shadow: 0 0 0 3px rgba(31, 64, 122, 0.15);
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 42px;
+}
+
+.toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--muted);
+  padding: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#deleteBtn {
+  display: none;
+}
+
+.btn {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.primary {
+  background: var(--eth-blue);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(31, 64, 122, 0.2);
+}
+
+.danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(198, 40, 40, 0.2);
+}
+
+.footer {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
