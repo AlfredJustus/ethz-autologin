@@ -381,9 +381,10 @@
           }
 
           // ─── Shibboleth redirect / SAML POST-back ───
+          // These pages auto-redirect via the browser (302) or have hidden auto-submit forms.
+          // We don't show an overlay here — the browser handles the redirect natively.
+          // We only help by clicking submit on SAML POST-back forms that need a manual click.
           if (isShibbolethRedirect() && hasCreds && !previouslyFailed) {
-            showOverlay();
-
             const autoSubmit =
               document.querySelector('form input[type="submit"]') ||
               document.querySelector('form button[type="submit"]');
