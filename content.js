@@ -77,10 +77,28 @@
   };
 
   // ── Logout detection ──
-  // When a user clicks logout, we store which origin they logged out from.
-  // Auto-login is only skipped if the Shibboleth redirect came from that same origin.
-  // If the user manually navigates to aai-logon.ethz.ch, auto-login activates normally.
+  // Instead of a global timeout, we detect if the user arrived here via a logout redirect.
+  // This is checked by looking at the referrer or the current URL for logout indicators.
   const LOGOUT_PATTERN = /log\s*out|sign\s*out|abmelden|ausloggen|d[eé]connexion/i;
+
+  const arrivedViaLogout = () => {
+    // Check if the referrer contains logout-related paths
+    const ref = document.referrer || '';
+    if (/logout|Logout|signout|Shibboleth\.sso\/Logout/i.test(ref)) return true;
+
+    // Check if current URL has logout param (some services append this)
+    if (/logout|loggedout/i.test(location.search)) return true;
+
+    // Check if we're on the Shibboleth login page that's specifically a post-logout landing
+    // (Moodle redirects to /auth/shibboleth/login.php after logout)
+    if (location.pathname.includes('/auth/shibboleth/login.php') && /logout/i.test(ref)) return true;
+
+    return false;
+  };
+
+  // Watch for logout clicks — set a per-tab flag so we don't auto-login
+  // on the immediate redirect chain after clicking logout
+  let logoutClickedInTab = false;
 
   const watchForLogout = () => {
     document.addEventListener('click', (e) => {
@@ -93,28 +111,9 @@
       if (LOGOUT_PATTERN.test(text) || LOGOUT_PATTERN.test(href) ||
           href.includes('logout') || href.includes('Logout') ||
           href.includes('Shibboleth.sso/Logout')) {
-        // Store the origin the user logged out from
-        chrome.storage.local.set({
-          ethz_logout_origin: location.origin,
-          ethz_logout_at: Date.now()
-        });
+        logoutClickedInTab = true;
       }
     }, true);
-  };
-
-  // Check if this login page was reached via a redirect from a site the user just logged out of.
-  // We use document.referrer to see where we came from.
-  const isLogoutBypass = (logoutOrigin, logoutAt) => {
-    if (!logoutOrigin || !logoutAt) return false;
-    // Only bypass for 60 seconds — just enough to cover the redirect chain after logout
-    if (Date.now() - logoutAt > 60000) return false;
-    // Check if the referrer matches the origin the user logged out from
-    try {
-      const ref = document.referrer ? new URL(document.referrer).origin : '';
-      return ref === logoutOrigin || location.origin === logoutOrigin;
-    } catch {
-      return false;
-    }
   };
 
   // ── Detect login errors on the page ──
@@ -316,25 +315,26 @@
 
   // ── Main logic ──
   const run = () => {
-    // Always watch for logout clicks on any ETHZ page
+    // Watch for logout clicks on this page (per-tab, dies on navigation)
     watchForLogout();
 
     chrome.storage.local.get(
-      ['ethz_username', 'ethz_password', 'ethz_login_failed', 'ethz_logout_origin', 'ethz_logout_at'],
+      ['ethz_username', 'ethz_password', 'ethz_login_failed'],
       (result) => {
         const username = result.ethz_username;
         const password = result.ethz_password;
         const hasCreds = !!(username && password);
         const previouslyFailed = !!result.ethz_login_failed;
-        const logoutBypassed = isLogoutBypass(result.ethz_logout_origin, result.ethz_logout_at);
+
+        // ─── Respect manual logout ───
+        // Skip auto-login if:
+        // 1. User clicked logout on this tab (per-tab JS flag), OR
+        // 2. We arrived here via a logout redirect (referrer check)
+        if (logoutClickedInTab || arrivedViaLogout()) return;
 
         // ─── IdP login page ───
         if (isIdpPage() && hasLoginForm()) {
 
-          // If we just got here from a logout redirect, don't auto-login
-          if (logoutBypassed) return;
-
-          // Check if this is a RETURN to the login page after a failed attempt
           if (hasLoginError() && hasCreds) {
             chrome.runtime.sendMessage({ type: 'LOGIN_FAILED' });
             showToast({
@@ -350,7 +350,6 @@
             return;
           }
 
-          // If a previous attempt already failed, don't auto-fill again (prevent loop)
           if (previouslyFailed) {
             showToast({
               title: 'Auto-login paused',
@@ -365,7 +364,6 @@
             return;
           }
 
-          // No credentials saved — show helpful nudge
           if (!hasCreds) {
             showToast({
               title: 'ETHZ Auto-Login',
@@ -394,7 +392,7 @@
         }
 
         // ─── Shibboleth redirect / SAML POST-back ───
-        if (isShibbolethRedirect() && hasCreds && !previouslyFailed && !logoutBypassed) {
+        if (isShibbolethRedirect() && hasCreds && !previouslyFailed) {
           showOverlay();
 
           const autoSubmit =
@@ -406,11 +404,9 @@
           return;
         }
 
-        // ─── Normal ETHZ page — if we just landed here successfully, clear failure + logout state ───
+        // ─── Normal ETHZ page — login succeeded ───
         if (hasCreds && !isIdpPage() && !isShibbolethRedirect()) {
           chrome.runtime.sendMessage({ type: 'LOGIN_SUCCEEDED' });
-          // Clear logout bypass since we've landed on a normal page
-          chrome.storage.local.remove(['ethz_logout_origin', 'ethz_logout_at']);
         }
       }
     );
