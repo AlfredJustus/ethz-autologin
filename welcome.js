@@ -101,6 +101,7 @@ passwordInput.addEventListener('keydown', (e) => {
 toggleBtn.addEventListener('click', () => {
   const isPassword = passwordInput.type === 'password';
   passwordInput.type = isPassword ? 'text' : 'password';
+  toggleBtn.textContent = isPassword ? '👁‍🗨' : '👁';
   toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
 });
 
