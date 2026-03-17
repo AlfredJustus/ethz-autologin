@@ -26,13 +26,17 @@
   // ── Detection helpers ──
   const isIdpPage = () => TRUSTED_IDP_HOSTS.includes(location.hostname);
 
-  const isShibbolethRedirect = () =>
-    location.pathname.includes('Shibboleth.sso') ||
-    location.pathname.includes('/auth/shibboleth') ||
-    location.pathname.includes('/idp/') ||
-    !!document.querySelector('form[action*="Shibboleth.sso"]') ||
+  // Detects SAML POST-back pages — hidden forms that need a click to continue.
+  // These are NOT user-facing login pages. They contain a hidden SAMLResponse/SAMLRequest
+  // that the browser should auto-submit (but sometimes doesn't without JS).
+  const isSamlPostBack = () =>
     !!document.querySelector('input[name="SAMLResponse"]') ||
     !!document.querySelector('input[name="SAMLRequest"]');
+
+  // Detects Shibboleth SP handler endpoints (e.g., /Shibboleth.sso/SAML2/POST).
+  // These redirect automatically via 302 — we don't need to do anything on them.
+  const isShibbolethEndpoint = () =>
+    location.pathname.includes('Shibboleth.sso');
 
   const findFirstMatch = (selectors) => {
     for (const sel of selectors) {
@@ -380,22 +384,24 @@
             return;
           }
 
-          // ─── Shibboleth redirect / SAML POST-back ───
-          // These pages auto-redirect via the browser (302) or have hidden auto-submit forms.
-          // We don't show an overlay here — the browser handles the redirect natively.
-          // We only help by clicking submit on SAML POST-back forms that need a manual click.
-          if (isShibbolethRedirect() && hasCreds && !previouslyFailed) {
-            const autoSubmit =
-              document.querySelector('form input[type="submit"]') ||
-              document.querySelector('form button[type="submit"]');
-            if (autoSubmit) {
-              setTimeout(() => autoSubmit.click(), 100);
+          // ─── SAML POST-back pages ───
+          // These are hidden forms with SAMLResponse/SAMLRequest that need a click to continue.
+          // Only click submit if the form actually contains SAML data (not random login pages).
+          if (isSamlPostBack() && hasCreds && !previouslyFailed) {
+            const samlForm =
+              document.querySelector('form:has(input[name="SAMLResponse"])') ||
+              document.querySelector('form:has(input[name="SAMLRequest"])');
+            if (samlForm) {
+              const submitBtn = samlForm.querySelector('input[type="submit"], button[type="submit"]');
+              if (submitBtn) {
+                setTimeout(() => submitBtn.click(), 100);
+              }
             }
             return;
           }
 
           // ─── Normal ETHZ page — login succeeded ───
-          if (hasCreds && !isIdpPage() && !isShibbolethRedirect()) {
+          if (hasCreds && !isIdpPage() && !isSamlPostBack() && !isShibbolethEndpoint()) {
             chrome.runtime.sendMessage({ type: 'LOGIN_SUCCEEDED' });
           }
         }
