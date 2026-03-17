@@ -1,12 +1,15 @@
 // ETHZ Auto-Login content script
 // Shows a seamless overlay during the Shibboleth redirect chain,
 // auto-fills credentials ONLY on the trusted IdP domain,
-// detects login failures, and shows contextual notifications.
+// detects login failures, respects manual logout, and shows contextual notifications.
 
 (() => {
   'use strict';
 
   const GITHUB_URL = 'https://github.com/AlfredJustus/ethz-autologin';
+
+  // ── Config ──
+  const LOGOUT_BYPASS_MS = 10 * 60 * 1000; // 10 minutes
 
   // ── Security: only auto-fill on the actual ETHZ Identity Provider ──
   const TRUSTED_IDP_HOSTS = ['aai-logon.ethz.ch'];
@@ -78,9 +81,34 @@
     );
   };
 
+  // ── Logout detection ──
+  // Watch for clicks on logout links/buttons so we don't immediately re-login
+  const LOGOUT_PATTERN = /log\s*out|sign\s*out|abmelden|ausloggen|d[eé]connexion/i;
+
+  const watchForLogout = () => {
+    document.addEventListener('click', (e) => {
+      const target = e.target.closest('a, button');
+      if (!target) return;
+
+      const text = target.textContent || '';
+      const href = target.getAttribute('href') || '';
+
+      if (LOGOUT_PATTERN.test(text) || LOGOUT_PATTERN.test(href) ||
+          href.includes('logout') || href.includes('Logout') ||
+          href.includes('Shibboleth.sso/Logout')) {
+        // User is intentionally logging out — set bypass
+        chrome.storage.local.set({ ethz_logout_at: Date.now() });
+      }
+    }, true); // capture phase so we catch it before navigation
+  };
+
+  const isLogoutBypassed = (logoutAt) => {
+    if (!logoutAt) return false;
+    return (Date.now() - logoutAt) < LOGOUT_BYPASS_MS;
+  };
+
   // ── Detect login errors on the page ──
   const hasLoginError = () => {
-    // Shibboleth IdP shows error messages in specific elements
     const errorSelectors = [
       '.login-error',
       '.error-message',
@@ -94,7 +122,6 @@
       const el = document.querySelector(sel);
       if (el && el.offsetParent !== null) return true;
     }
-    // Also check for common error text patterns in the page
     const body = document.body?.textContent || '';
     return /incorrect.*password|wrong.*password|invalid.*credentials|authentication.*failed|login.*failed|falsches.*passwort|anmeldung.*fehlgeschlagen/i.test(body);
   };
@@ -184,7 +211,6 @@
   let toastStyleInjected = false;
 
   const showToast = ({ title, body, type = 'info', action = null }) => {
-    // Remove any existing toast
     const existing = document.getElementById('ethz-autologin-toast');
     if (existing) existing.remove();
 
@@ -220,14 +246,12 @@
       toast.querySelector('#ethz-toast-action')?.addEventListener('click', action.onClick);
     }
 
-    // Auto-dismiss after 15s unless it's an error
     if (type !== 'error') {
       setTimeout(() => toast.remove(), 15000);
     }
   };
 
   const openExtensionPopup = () => {
-    // Content scripts can't open the popup directly, but we can guide the user
     showToast({
       title: 'ETHZ Auto-Login',
       body: 'Click the extension icon <strong>(🔒 E)</strong> in your toolbar to add or update your credentials.',
@@ -282,20 +306,26 @@
 
   // ── Main logic ──
   const run = () => {
+    // Always watch for logout clicks on any ETHZ page
+    watchForLogout();
+
     chrome.storage.local.get(
-      ['ethz_username', 'ethz_password', 'ethz_login_failed'],
+      ['ethz_username', 'ethz_password', 'ethz_login_failed', 'ethz_logout_at'],
       (result) => {
         const username = result.ethz_username;
         const password = result.ethz_password;
         const hasCreds = !!(username && password);
         const previouslyFailed = !!result.ethz_login_failed;
+        const logoutBypassed = isLogoutBypassed(result.ethz_logout_at);
+
+        // ─── Respect manual logout (10 min cooldown) ───
+        if (logoutBypassed) return;
 
         // ─── IdP login page ───
         if (isIdpPage() && hasLoginForm()) {
 
           // Check if this is a RETURN to the login page after a failed attempt
           if (hasLoginError() && hasCreds) {
-            // Login failed — notify background, show error toast, do NOT retry
             chrome.runtime.sendMessage({ type: 'LOGIN_FAILED' });
             showToast({
               title: 'Login failed',
@@ -368,7 +398,6 @@
 
         // ─── Normal ETHZ page — if we just landed here successfully, clear failure state ───
         if (hasCreds && !isIdpPage() && !isShibbolethRedirect()) {
-          // We made it through — login succeeded
           chrome.runtime.sendMessage({ type: 'LOGIN_SUCCEEDED' });
         }
       }
