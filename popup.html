@@ -12,6 +12,12 @@
         <h1>ETHZ Auto-Login</h1>
       </header>
 
+      <!-- Welcome banner (shown once on first install) -->
+      <div id="welcome" class="welcome" style="display: none;">
+        <p><strong>Welcome!</strong> Add your ETHZ credentials below to enable automatic login on all ETHZ websites.</p>
+        <p class="welcome-sub">Your credentials are stored locally and never leave your browser. This extension is <a href="https://github.com/AlfredJustus/ethz-autologin" target="_blank" rel="noopener">open source</a>.</p>
+      </div>
+
       <div id="status" class="status status-empty">No credentials set</div>
 
       <div class="field">
@@ -44,7 +50,9 @@
         <button id="deleteBtn" class="btn danger" type="button">Delete</button>
       </div>
 
-      <footer class="footer">Credentials stored locally only</footer>
+      <footer class="footer">
+        Credentials stored locally only · <a href="https://github.com/AlfredJustus/ethz-autologin" target="_blank" rel="noopener">GitHub</a>
+      </footer>
     </div>
 
     <script src="popup.js"></script>

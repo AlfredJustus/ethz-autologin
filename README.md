@@ -1,30 +1,50 @@
-# ETHZ Auto-Login Chrome Extension
+# ETHZ Auto-Login
 
-Automatically logs you into ETHZ Shibboleth/SWITCH AAI login pages on `*.ethz.ch` using locally stored credentials.
+Chrome extension that automatically logs you into ETHZ websites (Shibboleth / SWITCH AAI). Entirely local — your credentials never leave your browser.
 
 ## Features
-- Saves ETHZ username + password in `chrome.storage.local`
-- Detects Shibboleth login form (`j_username` / `j_password`) on any `*.ethz.ch` page
-- Auto-fills and submits the form
-- Clean popup UI for managing credentials
 
-## Install (Load Unpacked)
-1. Open Chrome and go to `chrome://extensions`
-2. Enable **Developer mode**
-3. Click **Load unpacked**
-4. Select the `extension/` folder in this project
+- **Auto-login** on any `*.ethz.ch` site that uses Shibboleth SSO (Moodle, video.ethz.ch, etc.)
+- **Seamless redirect** — clean spinner overlay while the SSO chain completes, no page flashing
+- **Security first** — credentials only auto-filled on the trusted IdP (`aai-logon.ethz.ch`), never on arbitrary subdomains
+- **Smart failure handling** — detects wrong credentials, shows a notification, and stops (no infinite retry loops)
+- **First-install welcome** — guides new users to set up their credentials
+- **No-credentials nudge** — subtle notification on login pages if credentials haven't been configured yet
 
-## Use
-1. Click the extension icon
+## Install
+
+1. Clone or download this repo
+2. Open Chrome → `chrome://extensions`
+3. Enable **Developer mode** (top-right toggle)
+4. Click **Load unpacked** → select this folder
+
+## Usage
+
+1. Click the extension icon in your toolbar
 2. Enter your ETH username and password
 3. Click **Save**
-4. Visit any ETHZ site that triggers the Shibboleth login — it will auto-fill and submit
+4. Visit any ETHZ site — login happens automatically
 
-## Privacy
-- Credentials are stored **locally only** in your browser via `chrome.storage.local`
+If your credentials are wrong, the extension will notify you and stop trying. Update your credentials in the popup to try again.
+
+## Privacy & Security
+
+- Credentials stored **locally only** via `chrome.storage.local` (encrypted at rest by Chrome)
 - No external network calls, analytics, or tracking
+- Auto-fill restricted to `aai-logon.ethz.ch` — a compromised ETHZ subdomain cannot extract your password
+- Passwords never displayed in plain text in the UI
+- 100% open source — read every line of code
 
 ## Files
-- `content.js` – detects login forms and submits them
-- `popup.html/css/js` – UI for managing credentials
-- `icons/` – extension icons
+
+| File | Purpose |
+|------|---------|
+| `manifest.json` | Extension config (Manifest V3) |
+| `background.js` | First-install handling, failure state management |
+| `content.js` | Login form detection, overlay, auto-fill, notifications |
+| `popup.html/css/js` | Settings UI for credentials |
+| `icons/` | Extension icons |
+
+## License
+
+MIT

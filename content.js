@@ -1,9 +1,12 @@
 // ETHZ Auto-Login content script
-// Shows a seamless overlay during the Shibboleth redirect chain and
-// auto-fills credentials ONLY on the trusted IdP domain.
+// Shows a seamless overlay during the Shibboleth redirect chain,
+// auto-fills credentials ONLY on the trusted IdP domain,
+// detects login failures, and shows contextual notifications.
 
 (() => {
   'use strict';
+
+  const GITHUB_URL = 'https://github.com/AlfredJustus/ethz-autologin';
 
   // ── Security: only auto-fill on the actual ETHZ Identity Provider ──
   const TRUSTED_IDP_HOSTS = ['aai-logon.ethz.ch'];
@@ -22,25 +25,17 @@
     'input[type="password"]'
   ];
 
-  // ── Detect whether this page is part of the SSO redirect chain ──
+  // ── Detection helpers ──
   const isIdpPage = () => TRUSTED_IDP_HOSTS.includes(location.hostname);
 
   const isShibbolethRedirect = () =>
     location.pathname.includes('Shibboleth.sso') ||
     location.pathname.includes('/auth/shibboleth') ||
     location.pathname.includes('/idp/') ||
-    // POST-back pages with a hidden SAML form
     !!document.querySelector('form[action*="Shibboleth.sso"]') ||
     !!document.querySelector('input[name="SAMLResponse"]') ||
     !!document.querySelector('input[name="SAMLRequest"]');
 
-  const hasLoginForm = () => {
-    const u = findFirstMatch(USERNAME_SELECTORS);
-    const p = findFirstMatch(PASSWORD_SELECTORS);
-    return !!(u && p);
-  };
-
-  // ── Helpers ──
   const findFirstMatch = (selectors) => {
     for (const sel of selectors) {
       const el = document.querySelector(sel);
@@ -49,25 +44,28 @@
     return null;
   };
 
+  const hasLoginForm = () => {
+    const u = findFirstMatch(USERNAME_SELECTORS);
+    const p = findFirstMatch(PASSWORD_SELECTORS);
+    return !!(u && p);
+  };
+
   const dispatchInputEvents = (el) => {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
   const findSubmitButton = () => {
-    // Primary: Shibboleth IdP proceed button
     const primary =
       document.querySelector('button[name="_eventId_proceed"]') ||
       document.querySelector('input[name="_eventId_proceed"]');
     if (primary) return primary;
 
-    // Standard submit
     const submit =
       document.querySelector('button[type="submit"]') ||
       document.querySelector('input[type="submit"]');
     if (submit) return submit;
 
-    // Fallback: text-match
     const pattern = /login|anmelden|sign\s*in|weiter|continue/i;
     const candidates = Array.from(
       document.querySelectorAll('button, input[type="button"], input[type="submit"]')
@@ -80,7 +78,164 @@
     );
   };
 
-  // ── Overlay ──
+  // ── Detect login errors on the page ──
+  const hasLoginError = () => {
+    // Shibboleth IdP shows error messages in specific elements
+    const errorSelectors = [
+      '.login-error',
+      '.error-message',
+      '.form-error',
+      'p.output--error',
+      'p.output-error',
+      '.alert-danger',
+      '.alert-error'
+    ];
+    for (const sel of errorSelectors) {
+      const el = document.querySelector(sel);
+      if (el && el.offsetParent !== null) return true;
+    }
+    // Also check for common error text patterns in the page
+    const body = document.body?.textContent || '';
+    return /incorrect.*password|wrong.*password|invalid.*credentials|authentication.*failed|login.*failed|falsches.*passwort|anmeldung.*fehlgeschlagen/i.test(body);
+  };
+
+  // ── Toast notification system ──
+  const TOAST_CSS = `
+    #ethz-autologin-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 2147483647;
+      max-width: 360px;
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: #1b1b1b;
+      padding: 16px;
+      animation: ethz-toast-in 0.3s ease-out;
+    }
+    #ethz-autologin-toast.toast-error {
+      border-left: 4px solid #c62828;
+    }
+    #ethz-autologin-toast.toast-info {
+      border-left: 4px solid #1F407A;
+    }
+    #ethz-autologin-toast .toast-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    #ethz-autologin-toast .toast-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1F407A;
+    }
+    #ethz-autologin-toast .toast-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: #999;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    #ethz-autologin-toast .toast-close:hover {
+      color: #333;
+    }
+    #ethz-autologin-toast .toast-body {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #444;
+    }
+    #ethz-autologin-toast .toast-body a {
+      color: #1F407A;
+      text-decoration: underline;
+    }
+    #ethz-autologin-toast .toast-action {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 6px 14px;
+      background: #1F407A;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    #ethz-autologin-toast .toast-action:hover {
+      background: #163060;
+    }
+    #ethz-autologin-toast .toast-action.danger {
+      background: #c62828;
+    }
+    #ethz-autologin-toast .toast-action.danger:hover {
+      background: #a11f1f;
+    }
+    @keyframes ethz-toast-in {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  `;
+
+  let toastStyleInjected = false;
+
+  const showToast = ({ title, body, type = 'info', action = null }) => {
+    // Remove any existing toast
+    const existing = document.getElementById('ethz-autologin-toast');
+    if (existing) existing.remove();
+
+    if (!toastStyleInjected) {
+      const style = document.createElement('style');
+      style.textContent = TOAST_CSS;
+      document.documentElement.appendChild(style);
+      toastStyleInjected = true;
+    }
+
+    const toast = document.createElement('div');
+    toast.id = 'ethz-autologin-toast';
+    toast.classList.add(type === 'error' ? 'toast-error' : 'toast-info');
+
+    let actionHtml = '';
+    if (action) {
+      actionHtml = `<button class="toast-action ${action.danger ? 'danger' : ''}" id="ethz-toast-action">${action.label}</button>`;
+    }
+
+    toast.innerHTML = `
+      <div class="toast-header">
+        <span class="toast-title">${title}</span>
+        <button class="toast-close" id="ethz-toast-close">×</button>
+      </div>
+      <div class="toast-body">${body}${actionHtml}</div>
+    `;
+
+    document.documentElement.appendChild(toast);
+
+    toast.querySelector('#ethz-toast-close').addEventListener('click', () => toast.remove());
+
+    if (action?.onClick) {
+      toast.querySelector('#ethz-toast-action')?.addEventListener('click', action.onClick);
+    }
+
+    // Auto-dismiss after 15s unless it's an error
+    if (type !== 'error') {
+      setTimeout(() => toast.remove(), 15000);
+    }
+  };
+
+  const openExtensionPopup = () => {
+    // Content scripts can't open the popup directly, but we can guide the user
+    showToast({
+      title: 'ETHZ Auto-Login',
+      body: 'Click the extension icon <strong>(🔒 E)</strong> in your toolbar to add or update your credentials.',
+      type: 'info'
+    });
+  };
+
+  // ── Overlay (for seamless redirects) ──
   const OVERLAY_CSS = `
     #ethz-autologin-overlay {
       position: fixed;
@@ -122,59 +277,102 @@
       <div class="ethz-spinner"></div>
       <div class="ethz-label">Signing in to ETHZ…</div>
     `;
-    // Append to <html> so it covers even before <body> is ready
     document.documentElement.appendChild(overlay);
-  };
-
-  const removeOverlay = () => {
-    const el = document.getElementById('ethz-autologin-overlay');
-    if (el) el.remove();
   };
 
   // ── Main logic ──
   const run = () => {
-    chrome.storage.local.get(['ethz_username', 'ethz_password'], (result) => {
-      const username = result.ethz_username;
-      const password = result.ethz_password;
+    chrome.storage.local.get(
+      ['ethz_username', 'ethz_password', 'ethz_login_failed'],
+      (result) => {
+        const username = result.ethz_username;
+        const password = result.ethz_password;
+        const hasCreds = !!(username && password);
+        const previouslyFailed = !!result.ethz_login_failed;
 
-      // No credentials saved — do nothing anywhere
-      if (!username || !password) return;
+        // ─── IdP login page ───
+        if (isIdpPage() && hasLoginForm()) {
 
-      // CASE 1: We're on the IdP login page — overlay + fill + submit
-      if (isIdpPage() && hasLoginForm()) {
-        showOverlay();
+          // Check if this is a RETURN to the login page after a failed attempt
+          if (hasLoginError() && hasCreds) {
+            // Login failed — notify background, show error toast, do NOT retry
+            chrome.runtime.sendMessage({ type: 'LOGIN_FAILED' });
+            showToast({
+              title: 'Login failed',
+              body: 'Your saved ETHZ credentials appear to be incorrect. Update or remove them in the extension settings.',
+              type: 'error',
+              action: {
+                label: 'Update credentials',
+                danger: true,
+                onClick: openExtensionPopup
+              }
+            });
+            return;
+          }
 
-        const u = findFirstMatch(USERNAME_SELECTORS);
-        const p = findFirstMatch(PASSWORD_SELECTORS);
+          // If a previous attempt already failed, don't auto-fill again (prevent loop)
+          if (previouslyFailed) {
+            showToast({
+              title: 'Auto-login paused',
+              body: 'A previous login attempt failed. Update your credentials in the extension to try again.',
+              type: 'error',
+              action: {
+                label: 'Update credentials',
+                danger: true,
+                onClick: openExtensionPopup
+              }
+            });
+            return;
+          }
 
-        u.value = username;
-        p.value = password;
-        dispatchInputEvents(u);
-        dispatchInputEvents(p);
+          // No credentials saved — show helpful nudge
+          if (!hasCreds) {
+            showToast({
+              title: 'ETHZ Auto-Login',
+              body: 'You haven\'t set up your login credentials yet. Click the extension icon to add them and skip this page next time.',
+              type: 'info'
+            });
+            return;
+          }
 
-        const btn = findSubmitButton();
-        if (btn) {
-          setTimeout(() => btn.click(), 300);
+          // Happy path: overlay + fill + submit
+          showOverlay();
+
+          const u = findFirstMatch(USERNAME_SELECTORS);
+          const p = findFirstMatch(PASSWORD_SELECTORS);
+
+          u.value = username;
+          p.value = password;
+          dispatchInputEvents(u);
+          dispatchInputEvents(p);
+
+          const btn = findSubmitButton();
+          if (btn) {
+            setTimeout(() => btn.click(), 300);
+          }
+          return;
         }
-        return;
-      }
 
-      // CASE 2: We're on a Shibboleth redirect / SAML POST-back page — just overlay
-      if (isShibbolethRedirect()) {
-        showOverlay();
+        // ─── Shibboleth redirect / SAML POST-back ───
+        if (isShibbolethRedirect() && hasCreds && !previouslyFailed) {
+          showOverlay();
 
-        // Auto-click any "Continue" / submit button on SAML POST-back forms
-        const autoSubmit =
-          document.querySelector('form input[type="submit"]') ||
-          document.querySelector('form button[type="submit"]');
-        if (autoSubmit) {
-          setTimeout(() => autoSubmit.click(), 100);
+          const autoSubmit =
+            document.querySelector('form input[type="submit"]') ||
+            document.querySelector('form button[type="submit"]');
+          if (autoSubmit) {
+            setTimeout(() => autoSubmit.click(), 100);
+          }
+          return;
         }
-        return;
-      }
 
-      // CASE 3: Normal ETHZ page — not part of login flow, do nothing
-    });
+        // ─── Normal ETHZ page — if we just landed here successfully, clear failure state ───
+        if (hasCreds && !isIdpPage() && !isShibbolethRedirect()) {
+          // We made it through — login succeeded
+          chrome.runtime.sendMessage({ type: 'LOGIN_SUCCEEDED' });
+        }
+      }
+    );
   };
 
   run();

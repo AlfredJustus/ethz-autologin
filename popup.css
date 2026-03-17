@@ -2,6 +2,7 @@
   --eth-blue: #1f407a;
   --success: #2e7d32;
   --danger: #c62828;
+  --warning: #e65100;
   --text: #1b1b1b;
   --muted: #6f6f6f;
   --border: #e0e0e0;
@@ -31,6 +32,35 @@ body {
   color: var(--eth-blue);
 }
 
+/* Welcome banner */
+.welcome {
+  background: #e8edf4;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.welcome p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.welcome p:last-child {
+  margin-bottom: 0;
+}
+
+.welcome .welcome-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.welcome a {
+  color: var(--eth-blue);
+  text-decoration: underline;
+}
+
+/* Status bar */
 .status {
   font-size: 13px;
   padding: 8px 10px;
@@ -45,6 +75,12 @@ body {
   color: var(--success);
 }
 
+.status-error {
+  background: #fbe9e7;
+  color: var(--warning);
+}
+
+/* Form fields */
 .field {
   margin-bottom: 12px;
 }
@@ -92,6 +128,7 @@ body {
   padding: 4px;
 }
 
+/* Buttons */
 .actions {
   display: flex;
   gap: 8px;
@@ -128,9 +165,19 @@ body {
   box-shadow: 0 6px 14px rgba(198, 40, 40, 0.2);
 }
 
+/* Footer */
 .footer {
   margin-top: 14px;
   font-size: 11px;
   color: var(--muted);
   text-align: center;
+}
+
+.footer a {
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+.footer a:hover {
+  color: var(--eth-blue);
 }
