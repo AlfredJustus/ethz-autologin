@@ -12,36 +12,50 @@
         <h1>ETHZ Auto-Login</h1>
       </header>
 
-      <div id="status" class="status status-empty">No credentials set</div>
-
-      <div class="field">
-        <label for="username">Username</label>
-        <input
-          id="username"
-          type="text"
-          placeholder="ETH Username (e.g. nethz)"
-          autocomplete="username"
-        />
-      </div>
-
-      <div class="field">
-        <label for="password">Password</label>
-        <div class="password-wrapper">
-          <input
-            id="password"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password"
-          />
-          <button id="togglePassword" class="toggle" type="button" aria-label="Show password">
-            👁
-          </button>
+      <!-- Saved state: shows status + actions, no form -->
+      <div id="saved-view" style="display: none;">
+        <div id="status" class="status status-ok">✓ Credentials saved</div>
+        <p class="saved-user">Logged in as <strong id="saved-username"></strong></p>
+        <div class="saved-actions">
+          <button id="changeBtn" class="btn-link" type="button">Change credentials</button>
+          <span class="dot">·</span>
+          <button id="deleteBtn" class="btn-link danger" type="button">Remove</button>
         </div>
       </div>
 
-      <div class="actions">
-        <button id="saveBtn" class="btn primary" type="button">Save</button>
-        <button id="deleteBtn" class="btn danger" type="button">Delete</button>
+      <!-- Edit state: credential form -->
+      <div id="edit-view" style="display: none;">
+        <div id="edit-status" class="status status-empty">Enter your ETHZ credentials</div>
+
+        <div class="field">
+          <label for="username">Username</label>
+          <input
+            id="username"
+            type="text"
+            placeholder="ETH Username (e.g. nethz)"
+            autocomplete="username"
+          />
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="password-wrapper">
+            <input
+              id="password"
+              type="password"
+              placeholder="Password"
+              autocomplete="off"
+            />
+            <button id="togglePassword" class="toggle" type="button" aria-label="Show password">
+              👁
+            </button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="saveBtn" class="btn primary" type="button">Save</button>
+          <button id="cancelBtn" class="btn secondary" type="button">Cancel</button>
+        </div>
       </div>
 
       <footer class="footer">

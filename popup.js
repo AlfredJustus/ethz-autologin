@@ -1,23 +1,44 @@
+const savedView = document.getElementById('saved-view');
+const editView = document.getElementById('edit-view');
 const statusEl = document.getElementById('status');
+const editStatusEl = document.getElementById('edit-status');
+const savedUsernameEl = document.getElementById('saved-username');
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
 const toggleBtn = document.getElementById('togglePassword');
 const saveBtn = document.getElementById('saveBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+const changeBtn = document.getElementById('changeBtn');
 const deleteBtn = document.getElementById('deleteBtn');
 
-const setStatus = (message, type = 'empty') => {
-  statusEl.textContent = message;
-  statusEl.className = 'status';
-  if (type === 'ok') statusEl.classList.add('status-ok');
-  if (type === 'error') statusEl.classList.add('status-error');
+const showSavedView = (username, failed = false) => {
+  savedUsernameEl.textContent = username;
+  savedView.style.display = 'block';
+  editView.style.display = 'none';
+
+  if (failed) {
+    statusEl.textContent = '⚠ Login failed — update your credentials';
+    statusEl.className = 'status status-error';
+  } else {
+    statusEl.textContent = '✓ Credentials saved';
+    statusEl.className = 'status status-ok';
+  }
 };
 
-const resetForm = () => {
-  usernameInput.value = '';
+const showEditView = (prefillUsername = '') => {
+  savedView.style.display = 'none';
+  editView.style.display = 'block';
+  usernameInput.value = prefillUsername;
   passwordInput.value = '';
-  passwordInput.placeholder = 'Password';
-  deleteBtn.style.display = 'none';
-  setStatus('No credentials set', 'empty');
+  editStatusEl.textContent = prefillUsername ? 'Update your credentials' : 'Enter your ETHZ credentials';
+  editStatusEl.className = 'status status-empty';
+
+  // Focus the right field
+  if (prefillUsername) {
+    passwordInput.focus();
+  } else {
+    usernameInput.focus();
+  }
 };
 
 const loadCredentials = () => {
@@ -25,29 +46,22 @@ const loadCredentials = () => {
     ['ethz_username', 'ethz_password', 'ethz_login_failed'],
     (result) => {
       if (result.ethz_username && result.ethz_password) {
-        usernameInput.value = result.ethz_username;
-        passwordInput.value = '';
-        passwordInput.placeholder = '••••••••';
-        deleteBtn.style.display = 'inline-flex';
-
-        if (result.ethz_login_failed) {
-          setStatus('⚠ Login failed — update your credentials', 'error');
-        } else {
-          setStatus('✓ Credentials saved', 'ok');
-        }
+        showSavedView(result.ethz_username, !!result.ethz_login_failed);
       } else {
-        resetForm();
+        showEditView();
       }
     }
   );
 };
 
-const saveCredentials = () => {
+// Save credentials
+saveBtn.addEventListener('click', () => {
   const username = usernameInput.value.trim();
   const password = passwordInput.value.trim();
 
   if (!username || !password) {
-    setStatus('Please enter username and password', 'error');
+    editStatusEl.textContent = 'Please enter username and password';
+    editStatusEl.className = 'status status-error';
     return;
   }
 
@@ -56,32 +70,38 @@ const saveCredentials = () => {
     () => {
       chrome.storage.local.remove(['ethz_login_failed']);
       chrome.runtime.sendMessage({ type: 'CREDENTIALS_UPDATED' });
-
-      passwordInput.value = '';
-      passwordInput.placeholder = '••••••••';
-      deleteBtn.style.display = 'inline-flex';
-      setStatus('✓ Credentials saved', 'ok');
+      showSavedView(username);
     }
   );
-};
+});
 
-const deleteCredentials = () => {
+// Change credentials — show form with username prefilled
+changeBtn.addEventListener('click', () => {
+  chrome.storage.local.get(['ethz_username'], (result) => {
+    showEditView(result.ethz_username || '');
+  });
+});
+
+// Cancel — go back to saved view
+cancelBtn.addEventListener('click', () => {
+  loadCredentials();
+});
+
+// Delete credentials
+deleteBtn.addEventListener('click', () => {
   if (!confirm('Delete saved ETHZ credentials?')) return;
-
   chrome.storage.local.remove(
     ['ethz_username', 'ethz_password', 'ethz_login_failed'],
-    () => resetForm()
+    () => showEditView()
   );
-};
+});
 
-const togglePasswordVisibility = () => {
+// Password toggle
+toggleBtn.addEventListener('click', () => {
   const isPassword = passwordInput.type === 'password';
   passwordInput.type = isPassword ? 'text' : 'password';
+  toggleBtn.textContent = isPassword ? '👁‍🗨' : '👁';
   toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-};
-
-saveBtn.addEventListener('click', saveCredentials);
-deleteBtn.addEventListener('click', deleteCredentials);
-toggleBtn.addEventListener('click', togglePasswordVisibility);
+});
 
 loadCredentials();

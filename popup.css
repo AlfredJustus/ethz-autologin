@@ -32,34 +32,6 @@ body {
   color: var(--eth-blue);
 }
 
-/* Welcome banner */
-.welcome {
-  background: #e8edf4;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
-
-.welcome p {
-  margin: 0 0 6px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.welcome p:last-child {
-  margin-bottom: 0;
-}
-
-.welcome .welcome-sub {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.welcome a {
-  color: var(--eth-blue);
-  text-decoration: underline;
-}
-
 /* Status bar */
 .status {
   font-size: 13px;
@@ -78,6 +50,47 @@ body {
 .status-error {
   background: #fbe9e7;
   color: var(--warning);
+}
+
+/* Saved view */
+.saved-user {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+
+.saved-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--eth-blue);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+.btn-link:hover {
+  color: #163060;
+}
+
+.btn-link.danger {
+  color: var(--danger);
+}
+
+.btn-link.danger:hover {
+  color: #a11f1f;
+}
+
+.dot {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 /* Form fields */
@@ -135,10 +148,6 @@ body {
   margin-top: 8px;
 }
 
-#deleteBtn {
-  display: none;
-}
-
 .btn {
   flex: 1;
   border: none;
@@ -159,10 +168,13 @@ body {
   box-shadow: 0 6px 14px rgba(31, 64, 122, 0.2);
 }
 
-.danger {
-  background: var(--danger);
-  color: #fff;
-  box-shadow: 0 6px 14px rgba(198, 40, 40, 0.2);
+.secondary {
+  background: #f0f0f0;
+  color: var(--text);
+}
+
+.secondary:hover {
+  background: #e4e4e4;
 }
 
 /* Footer */
