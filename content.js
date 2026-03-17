@@ -295,6 +295,13 @@
       <div class="ethz-label">Signing in to ETHZ…</div>
     `;
     document.documentElement.appendChild(overlay);
+
+    // Safety timeout: if login hasn't completed in 5s, remove overlay
+    // and let the user interact with the page manually
+    setTimeout(() => {
+      const el = document.getElementById('ethz-autologin-overlay');
+      if (el) el.remove();
+    }, 5000);
   };
 
   // ── Main logic ──
