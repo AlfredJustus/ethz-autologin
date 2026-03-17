@@ -9,312 +9,442 @@
 
       body {
         font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-        background: #f5f6f8;
+        background: #fafafa;
         color: #1b1b1b;
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
+        overflow: hidden;
       }
 
-      .card {
-        background: #ffffff;
-        border-radius: 16px;
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-        max-width: 440px;
+      .flow {
         width: 100%;
-        padding: 40px 36px;
-        margin: 24px;
-      }
-
-      .logo {
-        width: 56px;
-        height: 56px;
-        background: #1F407A;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 24px;
-      }
-
-      .logo span {
-        color: #fff;
-        font-size: 28px;
-        font-weight: 700;
-      }
-
-      h1 {
-        font-size: 22px;
-        font-weight: 700;
-        color: #1F407A;
-        margin-bottom: 8px;
-      }
-
-      .subtitle {
-        font-size: 15px;
-        color: #6f6f6f;
-        line-height: 1.6;
-        margin-bottom: 28px;
-      }
-
-      .field {
-        margin-bottom: 16px;
-      }
-
-      .field label {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-        color: #6f6f6f;
-        margin-bottom: 6px;
-      }
-
-      .field input {
-        width: 100%;
-        padding: 12px 14px;
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        font-size: 15px;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-      }
-
-      .field input:focus {
-        border-color: #1F407A;
-        box-shadow: 0 0 0 3px rgba(31, 64, 122, 0.12);
-      }
-
-      .password-wrapper {
+        max-width: 480px;
+        padding: 0 24px;
         position: relative;
       }
 
-      .password-wrapper input {
-        padding-right: 46px;
+      /* ── Steps (Typeform-style, one at a time) ── */
+      .step {
+        display: none;
+        flex-direction: column;
+        animation: step-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
-      .toggle {
+      .step.active {
+        display: flex;
+      }
+
+      @keyframes step-in {
+        from { opacity: 0; transform: translateY(24px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ── Progress bar ── */
+      .progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        background: #1F407A;
+        transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 10;
+      }
+
+      /* ── Typography ── */
+      .step-number {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1F407A;
+        opacity: 0.5;
+        margin-bottom: 12px;
+        letter-spacing: 0.05em;
+      }
+
+      h1 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1b1b1b;
+        line-height: 1.3;
+        margin-bottom: 10px;
+      }
+
+      h1 span {
+        color: #1F407A;
+      }
+
+      .hint {
+        font-size: 15px;
+        color: #888;
+        line-height: 1.6;
+        margin-bottom: 32px;
+      }
+
+      .hint a {
+        color: #1F407A;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(31, 64, 122, 0.3);
+        transition: border-color 0.2s;
+      }
+
+      .hint a:hover {
+        border-bottom-color: #1F407A;
+      }
+
+      /* ── Input ── */
+      .input-group {
+        position: relative;
+        margin-bottom: 20px;
+      }
+
+      .input-group input {
+        width: 100%;
+        padding: 16px 0;
+        border: none;
+        border-bottom: 2px solid #e0e0e0;
+        background: transparent;
+        font-size: 20px;
+        font-family: inherit;
+        color: #1b1b1b;
+        outline: none;
+        transition: border-color 0.3s;
+      }
+
+      .input-group input::placeholder {
+        color: #ccc;
+      }
+
+      .input-group input:focus {
+        border-bottom-color: #1F407A;
+      }
+
+      .input-group .toggle-pw {
         position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
+        right: 0;
+        bottom: 16px;
         border: none;
         background: transparent;
         cursor: pointer;
-        font-size: 18px;
-        color: #999;
+        font-size: 20px;
+        color: #bbb;
         padding: 4px;
+        transition: color 0.2s;
       }
 
-      .toggle:hover {
-        color: #555;
+      .input-group .toggle-pw:hover {
+        color: #666;
       }
 
-      .actions {
-        margin-top: 24px;
+      /* ── Buttons ── */
+      .btn-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 8px;
       }
 
-      .btn-save {
-        width: 100%;
-        padding: 13px;
-        background: #1F407A;
-        color: #fff;
+      .btn {
+        padding: 14px 32px;
         border: none;
-        border-radius: 10px;
+        border-radius: 8px;
         font-size: 15px;
         font-weight: 600;
         cursor: pointer;
-        transition: background 0.2s, transform 0.1s;
-        box-shadow: 0 4px 14px rgba(31, 64, 122, 0.25);
+        transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
       }
 
-      .btn-save:hover {
-        background: #163060;
-      }
-
-      .btn-save:active {
+      .btn:active {
         transform: translateY(1px);
       }
 
-      .btn-save:disabled {
-        opacity: 0.5;
+      .btn-primary {
+        background: #1F407A;
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(31, 64, 122, 0.25);
+      }
+
+      .btn-primary:hover {
+        background: #163060;
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.4;
         cursor: default;
+        transform: none;
       }
 
-      .feedback {
-        text-align: center;
-        margin-top: 14px;
-        font-size: 14px;
-        min-height: 20px;
-      }
-
-      .feedback.success {
-        color: #2e7d32;
-      }
-
-      .feedback.error {
-        color: #c62828;
-      }
-
-      .features {
-        margin-top: 28px;
-        padding-top: 24px;
-        border-top: 1px solid #eee;
-      }
-
-      .features h2 {
-        font-size: 14px;
-        font-weight: 600;
-        color: #1F407A;
-        margin-bottom: 14px;
-      }
-
-      .feature {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 10px;
-        font-size: 13px;
-        line-height: 1.5;
-        color: #444;
-      }
-
-      .feature .icon {
-        flex-shrink: 0;
-        font-size: 16px;
-      }
-
-      .footer {
-        margin-top: 24px;
-        text-align: center;
-        font-size: 12px;
+      .btn-skip {
+        background: transparent;
         color: #999;
+        font-weight: 500;
+        padding: 14px 8px;
       }
 
-      .footer a {
+      .btn-skip:hover {
+        color: #666;
+      }
+
+      /* ── Keyboard shortcut hint ── */
+      .key-hint {
+        font-size: 12px;
+        color: #bbb;
+        margin-top: 16px;
+      }
+
+      .key-hint kbd {
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-family: inherit;
+        font-size: 11px;
+      }
+
+      /* ── Done screen ── */
+      .done-icon {
+        font-size: 48px;
+        margin-bottom: 20px;
+      }
+
+      .done-features {
+        margin-top: 28px;
+      }
+
+      .done-features .feat {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+        font-size: 14px;
+        color: #555;
+        line-height: 1.5;
+      }
+
+      .done-features .feat .icon {
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      .footer-link {
+        margin-top: 32px;
+        font-size: 13px;
+        color: #aaa;
+      }
+
+      .footer-link a {
         color: #1F407A;
         text-decoration: none;
       }
 
-      .footer a:hover {
+      .footer-link a:hover {
         text-decoration: underline;
+      }
+
+      /* ── Error ── */
+      .input-error {
+        color: #c62828;
+        font-size: 13px;
+        margin-top: -12px;
+        margin-bottom: 16px;
+        min-height: 18px;
       }
     </style>
   </head>
   <body>
-    <div class="card">
-      <div class="logo"><span>E</span></div>
+    <div class="progress" id="progress" style="width: 0%"></div>
 
-      <h1>Welcome to ETHZ Auto-Login</h1>
-      <p class="subtitle">
-        Add your ETHZ credentials below. Next time you visit an ETHZ website,
-        you'll be logged in automatically.
-      </p>
+    <div class="flow">
 
-      <div class="field">
-        <label for="username">ETH Username</label>
-        <input id="username" type="text" placeholder="e.g. nethz" autocomplete="username" />
+      <!-- Step 1: Username -->
+      <div class="step active" id="step-1">
+        <div class="step-number">1 → 3</div>
+        <h1>What's your <span>ETHZ username</span>?</h1>
+        <p class="hint">
+          Your nethz username — the one you use to log into ETHZ services.
+        </p>
+        <div class="input-group">
+          <input id="username" type="text" placeholder="e.g. jsmith" autocomplete="username" autofocus />
+        </div>
+        <div class="input-error" id="error-1"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="next-1">Continue</button>
+          <button class="btn btn-skip" id="skip-1">I'll do this later</button>
+        </div>
+        <p class="key-hint">Press <kbd>Enter ↵</kbd></p>
       </div>
 
-      <div class="field">
-        <label for="password">Password</label>
-        <div class="password-wrapper">
+      <!-- Step 2: Password -->
+      <div class="step" id="step-2">
+        <div class="step-number">2 → 3</div>
+        <h1>And your <span>password</span>?</h1>
+        <p class="hint">
+          Stored locally in your browser — never sent anywhere.<br>
+          Can't remember it? <a href="chrome://password-manager/passwords?q=ethz" id="pw-manager-link">Check Google Password Manager</a>.
+        </p>
+        <div class="input-group">
           <input id="password" type="password" placeholder="Your ETHZ password" autocomplete="current-password" />
-          <button class="toggle" id="togglePassword" type="button" aria-label="Show password">👁</button>
+          <button class="toggle-pw" id="togglePassword" type="button" aria-label="Show password">👁</button>
         </div>
+        <div class="input-error" id="error-2"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="next-2">Save credentials</button>
+          <button class="btn btn-skip" id="skip-2">I'll do this later</button>
+        </div>
+        <p class="key-hint">Press <kbd>Enter ↵</kbd></p>
       </div>
 
-      <div class="actions">
-        <button class="btn-save" id="saveBtn" type="button">Save & get started</button>
+      <!-- Step 3: Done -->
+      <div class="step" id="step-3">
+        <div class="done-icon">✓</div>
+        <h1>You're all set.</h1>
+        <p class="hint" id="done-message">
+          Next time you visit an ETHZ website, you'll be logged in automatically.
+        </p>
+
+        <div class="done-features">
+          <div class="feat">
+            <span class="icon">🔐</span>
+            <span>Everything stays <strong>local</strong> — your credentials never leave this browser</span>
+          </div>
+          <div class="feat">
+            <span class="icon">⚡</span>
+            <span>Works on Moodle, video.ethz.ch, and any ETHZ site with Shibboleth login</span>
+          </div>
+          <div class="feat">
+            <span class="icon">⚙️</span>
+            <span>Change or remove credentials anytime from the extension icon</span>
+          </div>
+        </div>
+
+        <p class="footer-link">
+          100% open source · <a href="https://github.com/AlfredJustus/ethz-autologin" target="_blank" rel="noopener">View on GitHub</a>
+        </p>
       </div>
 
-      <div class="feedback" id="feedback"></div>
-
-      <div class="features">
-        <h2>How it works</h2>
-        <div class="feature">
-          <span class="icon">🔐</span>
-          <span>Credentials are stored <strong>locally in your browser</strong> — never sent anywhere</span>
-        </div>
-        <div class="feature">
-          <span class="icon">⚡</span>
-          <span>Automatically fills and submits the ETHZ login form when you visit any ETHZ site</span>
-        </div>
-        <div class="feature">
-          <span class="icon">🛡️</span>
-          <span>Only activates on the official ETHZ identity provider — safe from phishing on subdomains</span>
-        </div>
-        <div class="feature">
-          <span class="icon">⚙️</span>
-          <span>Update or remove credentials anytime by clicking the extension icon</span>
-        </div>
-      </div>
-
-      <div class="footer">
-        Open source · <a href="https://github.com/AlfredJustus/ethz-autologin" target="_blank" rel="noopener">View on GitHub</a>
-      </div>
     </div>
 
     <script>
+      const steps = [
+        document.getElementById('step-1'),
+        document.getElementById('step-2'),
+        document.getElementById('step-3')
+      ];
+      const progress = document.getElementById('progress');
       const usernameInput = document.getElementById('username');
       const passwordInput = document.getElementById('password');
-      const saveBtn = document.getElementById('saveBtn');
       const toggleBtn = document.getElementById('togglePassword');
-      const feedback = document.getElementById('feedback');
+      let currentStep = 0;
 
+      const goTo = (index) => {
+        steps[currentStep].classList.remove('active');
+        currentStep = index;
+        steps[currentStep].classList.add('active');
+        progress.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+
+        // Auto-focus the input in the new step
+        const input = steps[currentStep].querySelector('input');
+        if (input) setTimeout(() => input.focus(), 100);
+      };
+
+      // Handle the chrome:// link — content security may block it, so we copy to clipboard as fallback
+      document.getElementById('pw-manager-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        try {
+          chrome.tabs.create({ url: 'chrome://password-manager/passwords?q=ethz' });
+        } catch {
+          // Fallback: guide the user
+          const el = e.target;
+          const originalText = el.textContent;
+          navigator.clipboard.writeText('chrome://password-manager/passwords?q=ethz').then(() => {
+            el.textContent = 'Link copied! Paste in a new tab.';
+            setTimeout(() => { el.textContent = originalText; }, 3000);
+          }).catch(() => {
+            el.textContent = 'Go to: chrome://password-manager/passwords?q=ethz';
+            setTimeout(() => { el.textContent = originalText; }, 5000);
+          });
+        }
+      });
+
+      // Step 1: Username → next
+      document.getElementById('next-1').addEventListener('click', () => {
+        const val = usernameInput.value.trim();
+        if (!val) {
+          document.getElementById('error-1').textContent = 'Please enter your username.';
+          usernameInput.focus();
+          return;
+        }
+        document.getElementById('error-1').textContent = '';
+        goTo(1);
+      });
+
+      // Step 2: Password → save
+      document.getElementById('next-2').addEventListener('click', () => {
+        const pw = passwordInput.value.trim();
+        if (!pw) {
+          document.getElementById('error-2').textContent = 'Please enter your password.';
+          passwordInput.focus();
+          return;
+        }
+        document.getElementById('error-2').textContent = '';
+
+        const username = usernameInput.value.trim();
+        chrome.storage.local.set(
+          { ethz_username: username, ethz_password: pw },
+          () => {
+            chrome.storage.local.remove(['ethz_show_welcome', 'ethz_login_failed']);
+            chrome.action.setBadgeText({ text: '' });
+            goTo(2);
+          }
+        );
+      });
+
+      // Skip buttons → go to done with different message
+      document.getElementById('skip-1').addEventListener('click', () => {
+        document.getElementById('done-message').textContent =
+          'No worries — click the extension icon anytime to add your credentials.';
+        // Jump straight to done
+        steps[currentStep].classList.remove('active');
+        currentStep = 2;
+        steps[2].classList.add('active');
+        progress.style.width = '100%';
+      });
+
+      document.getElementById('skip-2').addEventListener('click', () => {
+        document.getElementById('done-message').textContent =
+          'No worries — click the extension icon anytime to finish setup.';
+        steps[currentStep].classList.remove('active');
+        currentStep = 2;
+        steps[2].classList.add('active');
+        progress.style.width = '100%';
+      });
+
+      // Enter key advances
+      usernameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('next-1').click();
+      });
+      passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('next-2').click();
+      });
+
+      // Password toggle
       toggleBtn.addEventListener('click', () => {
         const isPassword = passwordInput.type === 'password';
         passwordInput.type = isPassword ? 'text' : 'password';
         toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
       });
 
-      saveBtn.addEventListener('click', () => {
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value.trim();
-
-        if (!username || !password) {
-          feedback.textContent = 'Please fill in both fields.';
-          feedback.className = 'feedback error';
-          return;
-        }
-
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving…';
-
-        chrome.storage.local.set(
-          { ethz_username: username, ethz_password: password },
-          () => {
-            // Clear any welcome/failure flags
-            chrome.storage.local.remove(['ethz_show_welcome', 'ethz_login_failed']);
-            chrome.action.setBadgeText({ text: '' });
-
-            feedback.textContent = '✓ Credentials saved! You can close this tab.';
-            feedback.className = 'feedback success';
-            saveBtn.textContent = 'Saved ✓';
-
-            // Subtle: re-enable after a moment in case they want to change
-            setTimeout(() => {
-              saveBtn.disabled = false;
-              saveBtn.textContent = 'Save & get started';
-            }, 3000);
-          }
-        );
+      // Clear errors on input
+      usernameInput.addEventListener('input', () => {
+        document.getElementById('error-1').textContent = '';
+      });
+      passwordInput.addEventListener('input', () => {
+        document.getElementById('error-2').textContent = '';
       });
 
-      // If credentials already exist, pre-fill username
-      chrome.storage.local.get(['ethz_username'], (result) => {
-        if (result.ethz_username) {
-          usernameInput.value = result.ethz_username;
-          feedback.textContent = 'Credentials already configured. Update them below if needed.';
-          feedback.className = 'feedback success';
-        }
-      });
-
-      // Auto-focus the first empty field
-      if (!usernameInput.value) {
-        usernameInput.focus();
-      } else {
-        passwordInput.focus();
-      }
+      // Init progress
+      progress.style.width = '33%';
     </script>
   </body>
 </html>
