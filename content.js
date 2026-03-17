@@ -43,12 +43,25 @@
   const ETH_IDP_VALUE = 'https://aai-logon.ethz.ch/idp/shibboleth';
 
   const getEmbeddedWayfSelect = () => {
-    const select = document.querySelector('select[name="user_idp"], select#userIdPSelection');
+    // Moodle uses select[name="idp"], WAYF uses select[name="user_idp"]
+    const select = document.querySelector('select[name="user_idp"], select#userIdPSelection, select[name="idp"], select#idp');
     if (!select) return null;
     const option = Array.from(select.options).find(
       opt => opt.value === ETH_IDP_VALUE || /ETH Z(u|ü)rich/i.test(opt.text)
     );
     return option ? { select, option } : null;
+  };
+
+  // ── GitLab LDAP login detection ──
+  // gitlab.inf.ethz.ch uses LDAP auth (not Shibboleth). Same ETHZ credentials,
+  // different form. Only auto-fill on this specific trusted host.
+  const TRUSTED_LDAP_HOSTS = ['gitlab.inf.ethz.ch'];
+
+  const isLdapLoginPage = () => {
+    if (!TRUSTED_LDAP_HOSTS.includes(location.hostname)) return false;
+    const userField = document.querySelector('input#ldapmain_username, input[name="username"][id*="ldap"]');
+    const passField = document.querySelector('input#ldapmain_password, input[name="password"][id*="ldap"]');
+    return !!(userField && passField);
   };
 
   const findFirstMatch = (selectors) => {
@@ -408,6 +421,29 @@
               const submitBtn = samlForm.querySelector('input[type="submit"], button[type="submit"]');
               if (submitBtn) {
                 setTimeout(() => submitBtn.click(), 100);
+              }
+            }
+            return;
+          }
+
+          // ─── GitLab LDAP login ───
+          if (isLdapLoginPage() && hasCreds && !previouslyFailed) {
+            const userField = document.querySelector('input#ldapmain_username, input[name="username"][id*="ldap"]');
+            const passField = document.querySelector('input#ldapmain_password, input[name="password"][id*="ldap"]');
+
+            if (userField && passField) {
+              showOverlay();
+
+              userField.value = username;
+              passField.value = password;
+              dispatchInputEvents(userField);
+              dispatchInputEvents(passField);
+
+              // Find the LDAP form's submit button (not the standard GitLab login)
+              const ldapForm = userField.closest('form');
+              const submitBtn = ldapForm?.querySelector('button[type="submit"], input[type="submit"]');
+              if (submitBtn) {
+                setTimeout(() => submitBtn.click(), 300);
               }
             }
             return;
