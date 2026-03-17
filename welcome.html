@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ETHZ Auto-Login — Setup</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+        background: #f5f6f8;
+        color: #1b1b1b;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        max-width: 440px;
+        width: 100%;
+        padding: 40px 36px;
+        margin: 24px;
+      }
+
+      .logo {
+        width: 56px;
+        height: 56px;
+        background: #1F407A;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 24px;
+      }
+
+      .logo span {
+        color: #fff;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1F407A;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        font-size: 15px;
+        color: #6f6f6f;
+        line-height: 1.6;
+        margin-bottom: 28px;
+      }
+
+      .field {
+        margin-bottom: 16px;
+      }
+
+      .field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #6f6f6f;
+        margin-bottom: 6px;
+      }
+
+      .field input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 15px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .field input:focus {
+        border-color: #1F407A;
+        box-shadow: 0 0 0 3px rgba(31, 64, 122, 0.12);
+      }
+
+      .password-wrapper {
+        position: relative;
+      }
+
+      .password-wrapper input {
+        padding-right: 46px;
+      }
+
+      .toggle {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 18px;
+        color: #999;
+        padding: 4px;
+      }
+
+      .toggle:hover {
+        color: #555;
+      }
+
+      .actions {
+        margin-top: 24px;
+      }
+
+      .btn-save {
+        width: 100%;
+        padding: 13px;
+        background: #1F407A;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        box-shadow: 0 4px 14px rgba(31, 64, 122, 0.25);
+      }
+
+      .btn-save:hover {
+        background: #163060;
+      }
+
+      .btn-save:active {
+        transform: translateY(1px);
+      }
+
+      .btn-save:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .feedback {
+        text-align: center;
+        margin-top: 14px;
+        font-size: 14px;
+        min-height: 20px;
+      }
+
+      .feedback.success {
+        color: #2e7d32;
+      }
+
+      .feedback.error {
+        color: #c62828;
+      }
+
+      .features {
+        margin-top: 28px;
+        padding-top: 24px;
+        border-top: 1px solid #eee;
+      }
+
+      .features h2 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1F407A;
+        margin-bottom: 14px;
+      }
+
+      .feature {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #444;
+      }
+
+      .feature .icon {
+        flex-shrink: 0;
+        font-size: 16px;
+      }
+
+      .footer {
+        margin-top: 24px;
+        text-align: center;
+        font-size: 12px;
+        color: #999;
+      }
+
+      .footer a {
+        color: #1F407A;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo"><span>E</span></div>
+
+      <h1>Welcome to ETHZ Auto-Login</h1>
+      <p class="subtitle">
+        Add your ETHZ credentials below. Next time you visit an ETHZ website,
+        you'll be logged in automatically.
+      </p>
+
+      <div class="field">
+        <label for="username">ETH Username</label>
+        <input id="username" type="text" placeholder="e.g. nethz" autocomplete="username" />
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrapper">
+          <input id="password" type="password" placeholder="Your ETHZ password" autocomplete="current-password" />
+          <button class="toggle" id="togglePassword" type="button" aria-label="Show password">👁</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-save" id="saveBtn" type="button">Save & get started</button>
+      </div>
+
+      <div class="feedback" id="feedback"></div>
+
+      <div class="features">
+        <h2>How it works</h2>
+        <div class="feature">
+          <span class="icon">🔐</span>
+          <span>Credentials are stored <strong>locally in your browser</strong> — never sent anywhere</span>
+        </div>
+        <div class="feature">
+          <span class="icon">⚡</span>
+          <span>Automatically fills and submits the ETHZ login form when you visit any ETHZ site</span>
+        </div>
+        <div class="feature">
+          <span class="icon">🛡️</span>
+          <span>Only activates on the official ETHZ identity provider — safe from phishing on subdomains</span>
+        </div>
+        <div class="feature">
+          <span class="icon">⚙️</span>
+          <span>Update or remove credentials anytime by clicking the extension icon</span>
+        </div>
+      </div>
+
+      <div class="footer">
+        Open source · <a href="https://github.com/AlfredJustus/ethz-autologin" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+    </div>
+
+    <script>
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const saveBtn = document.getElementById('saveBtn');
+      const toggleBtn = document.getElementById('togglePassword');
+      const feedback = document.getElementById('feedback');
+
+      toggleBtn.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+      });
+
+      saveBtn.addEventListener('click', () => {
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (!username || !password) {
+          feedback.textContent = 'Please fill in both fields.';
+          feedback.className = 'feedback error';
+          return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+
+        chrome.storage.local.set(
+          { ethz_username: username, ethz_password: password },
+          () => {
+            // Clear any welcome/failure flags
+            chrome.storage.local.remove(['ethz_show_welcome', 'ethz_login_failed']);
+            chrome.action.setBadgeText({ text: '' });
+
+            feedback.textContent = '✓ Credentials saved! You can close this tab.';
+            feedback.className = 'feedback success';
+            saveBtn.textContent = 'Saved ✓';
+
+            // Subtle: re-enable after a moment in case they want to change
+            setTimeout(() => {
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Save & get started';
+            }, 3000);
+          }
+        );
+      });
+
+      // If credentials already exist, pre-fill username
+      chrome.storage.local.get(['ethz_username'], (result) => {
+        if (result.ethz_username) {
+          usernameInput.value = result.ethz_username;
+          feedback.textContent = 'Credentials already configured. Update them below if needed.';
+          feedback.className = 'feedback success';
+        }
+      });
+
+      // Auto-focus the first empty field
+      if (!usernameInput.value) {
+        usernameInput.focus();
+      } else {
+        passwordInput.focus();
+      }
+    </script>
+  </body>
+</html>

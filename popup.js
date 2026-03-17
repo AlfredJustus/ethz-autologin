@@ -4,7 +4,6 @@ const passwordInput = document.getElementById('password');
 const toggleBtn = document.getElementById('togglePassword');
 const saveBtn = document.getElementById('saveBtn');
 const deleteBtn = document.getElementById('deleteBtn');
-const welcomeEl = document.getElementById('welcome');
 
 const setStatus = (message, type = 'empty') => {
   statusEl.textContent = message;
@@ -23,21 +22,10 @@ const resetForm = () => {
 
 const loadCredentials = () => {
   chrome.storage.local.get(
-    ['ethz_username', 'ethz_password', 'ethz_show_welcome', 'ethz_login_failed'],
+    ['ethz_username', 'ethz_password', 'ethz_login_failed'],
     (result) => {
-      const username = result.ethz_username;
-      const password = result.ethz_password;
-
-      // Show welcome banner on first install
-      if (result.ethz_show_welcome) {
-        welcomeEl.style.display = 'block';
-        // Clear the welcome flag and badge
-        chrome.storage.local.remove(['ethz_show_welcome']);
-        chrome.action.setBadgeText({ text: '' });
-      }
-
-      if (username && password) {
-        usernameInput.value = username;
+      if (result.ethz_username && result.ethz_password) {
+        usernameInput.value = result.ethz_username;
         passwordInput.value = '';
         passwordInput.placeholder = '••••••••';
         deleteBtn.style.display = 'inline-flex';
@@ -66,31 +54,23 @@ const saveCredentials = () => {
   chrome.storage.local.set(
     { ethz_username: username, ethz_password: password },
     () => {
-      // Clear failure state when credentials are updated
       chrome.storage.local.remove(['ethz_login_failed']);
-
-      // Notify background to clear badge
       chrome.runtime.sendMessage({ type: 'CREDENTIALS_UPDATED' });
 
       passwordInput.value = '';
       passwordInput.placeholder = '••••••••';
       deleteBtn.style.display = 'inline-flex';
-      welcomeEl.style.display = 'none';
       setStatus('✓ Credentials saved', 'ok');
     }
   );
 };
 
 const deleteCredentials = () => {
-  const confirmed = confirm('Delete saved ETHZ credentials?');
-  if (!confirmed) return;
+  if (!confirm('Delete saved ETHZ credentials?')) return;
 
   chrome.storage.local.remove(
     ['ethz_username', 'ethz_password', 'ethz_login_failed'],
-    () => {
-      resetForm();
-      welcomeEl.style.display = 'none';
-    }
+    () => resetForm()
   );
 };
 
