@@ -38,6 +38,19 @@
   const isShibbolethEndpoint = () =>
     location.pathname.includes('Shibboleth.sso');
 
+  // Detects embedded WAYF / org-selection pages (e.g., Moodle's /auth/shibboleth/login.php).
+  // These have a dropdown to select your institution before triggering the SSO flow.
+  const ETH_IDP_VALUE = 'https://aai-logon.ethz.ch/idp/shibboleth';
+
+  const getEmbeddedWayfSelect = () => {
+    const select = document.querySelector('select[name="user_idp"], select#userIdPSelection');
+    if (!select) return null;
+    const option = Array.from(select.options).find(
+      opt => opt.value === ETH_IDP_VALUE || /ETH Z(u|ü)rich/i.test(opt.text)
+    );
+    return option ? { select, option } : null;
+  };
+
   const findFirstMatch = (selectors) => {
     for (const sel of selectors) {
       const el = document.querySelector(sel);
@@ -397,6 +410,44 @@
                 setTimeout(() => submitBtn.click(), 100);
               }
             }
+            return;
+          }
+
+          // ─── Embedded WAYF / org-selection pages ───
+          // E.g., Moodle's /auth/shibboleth/login.php with a dropdown to pick ETH Zurich.
+          // Auto-select ETH Zurich and submit, with loop guard.
+          const wayf = getEmbeddedWayfSelect();
+          if (wayf && hasCreds && !previouslyFailed) {
+            // Loop guard: check if we already submitted on this page recently
+            const guardKey = 'ethz_wayf_guard_' + location.origin + location.pathname;
+            chrome.storage.session.get([guardKey], (guardResult) => {
+              const lastSubmit = guardResult[guardKey] || 0;
+              if (Date.now() - lastSubmit < 30000) return; // Already tried in last 30s — stop
+
+              // Set guard before submitting
+              chrome.storage.session.set({ [guardKey]: Date.now() });
+
+              // Select ETH Zurich
+              wayf.select.value = wayf.option.value;
+              wayf.select.dispatchEvent(new Event('change', { bubbles: true }));
+
+              // Also fill the text search box if present (newer WAYF UI)
+              const searchBox = document.querySelector('input#userIdPSelection_iddtext, input.idd_textbox');
+              if (searchBox) {
+                searchBox.value = 'ETH Zurich';
+                searchBox.dispatchEvent(new Event('input', { bubbles: true }));
+                searchBox.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+
+              // Click submit
+              const submitBtn =
+                document.querySelector('button[name="Select"]') ||
+                document.querySelector('form button[type="submit"]') ||
+                document.querySelector('form input[type="submit"]');
+              if (submitBtn) {
+                setTimeout(() => submitBtn.click(), 300);
+              }
+            });
             return;
           }
 
